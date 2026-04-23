@@ -155,10 +155,11 @@ function SidebarContent({
   const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
       {/* ── Logo ── */}
       <div
+        onClick={() => window.location.href = "/dashboard"}
         style={{
           display: "flex",
           alignItems: "center",
@@ -167,7 +168,11 @@ function SidebarContent({
           justifyContent: isCollapsed ? "center" : "flex-start",
           borderBottom: "1px solid rgba(255,255,255,0.05)",
           flexShrink: 0,
+          cursor: "pointer",
+          transition: "opacity 0.2s",
         }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
       >
         <div
           style={{
@@ -209,7 +214,10 @@ function SidebarContent({
 
         {isMobile && (
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             style={{
               marginLeft: "auto",
               background: "none",
@@ -376,13 +384,15 @@ export default function Sidebar({ user }: SidebarProps) {
     <>
       {/* ── Desktop sidebar ── */}
       <aside
-        className="hidden md:flex relative flex-col h-screen transition-all duration-300 ease-in-out"
+        className="relative h-screen transition-all duration-300 ease-in-out"
         style={{
           width: collapsed ? "72px" : "232px",
           background: "rgba(10,10,16,0.98)",
           borderRight: "1px solid rgba(255,255,255,0.06)",
           flexShrink: 0,
-          overflow: "hidden",
+          overflow: "visible",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <SidebarContent
@@ -399,8 +409,8 @@ export default function Sidebar({ user }: SidebarProps) {
           onClick={() => setCollapsed(!collapsed)}
           style={{
             position: "absolute",
-            right: -12,
-            top: 22,
+            right: -10,
+            top: 18,
             width: 24,
             height: 24,
             borderRadius: "50%",

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 import {
   Map,
   FileText,
@@ -17,20 +18,6 @@ import {
   Layers,
   CircleCheck as CheckCircle2,
 } from 'lucide-react';
-
-// ─── Data ────────────────────────────────────────────────────────────────────
-
-const navLinks = [
-  { label: 'Roadmap', href: '/roadmap' },
-  { label: 'Mentor', href: '/mentor' },
-  { label: 'Resume', href: '/resume' },
-  { label: 'Quizzes', href: '/quizzes' },
-  { label: 'Jobs', href: '/jobs' },
-  { label: 'Community', href: '/community' },
-  { label: 'Projects', href: '/projects' },
-  { label: 'About', href: '/about' },
-  { label: 'Contact', href: '/contact' },
-];
 
 const STATS = [
   { num: '10K+', label: 'Active Learners' },
@@ -181,110 +168,6 @@ function GradientText({ children }: { children: React.ReactNode }) {
 function Divider() {
   return (
     <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-0" />
-  );
-}
-
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-
-function Navbar() {
-  return (
-    <nav
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        background: 'rgba(11,11,18,0.9)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(139,92,246,0.12)',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1280,
-          margin: '0 auto',
-          padding: '0 clamp(16px,4vw,32px)',
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 32,
-        }}
-      >
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg,#8b5cf6,#6366f1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Zap size={18} color="white" fill="white" />
-          </div>
-          <span style={{ fontFamily: 'Outfit,sans-serif', fontWeight: 800, fontSize: '1.1rem', color: '#f0eeff' }}>
-            EduPath <span style={{ background: 'linear-gradient(135deg,#8b5cf6,#06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI</span>
-          </span>
-        </Link>
-        <div style={{ display: 'none' }} className="md:!flex items-center gap-4 flex-1">
-          {navLinks.map(({ label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 8,
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                color: 'var(--text-secondary)',
-                textDecoration: 'none',
-                transition: 'color 0.15s',
-              }}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <Link href="/login" style={{ textDecoration: 'none' }}>
-            <button
-              style={{
-                padding: '8px 18px',
-                borderRadius: 9,
-                border: '1px solid rgba(139,92,246,0.3)',
-                background: 'transparent',
-                color: '#c4b5fd',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Log In
-            </button>
-          </Link>
-          <Link href="/dashboard" style={{ textDecoration: 'none' }}>
-            <button
-              style={{
-                padding: '8px 18px',
-                borderRadius: 9,
-                border: 'none',
-                background: 'linear-gradient(135deg,#8b5cf6,#6366f1)',
-                color: '#fff',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 0 20px rgba(139,92,246,0.4)',
-              }}
-            >
-              Get Started Free
-            </button>
-          </Link>
-        </div>
-      </div>
-    </nav>
   );
 }
 
