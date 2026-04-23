@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { groqJSON, MODELS } from "@/lib/ai";
-import pdfParse from "pdf-parse";
+import * as pdfParseModule from "pdf-parse";
+
+// pdf-parse has no default export in ESM/Turbopack
+const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
 
 interface ParsedResume {
   name: string;
@@ -53,7 +56,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
   }
 
-  // Accept PDF or plain text
   const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
   const isText = file.type === "text/plain" || file.name.endsWith(".txt");
 
@@ -67,7 +69,6 @@ export async function POST(req: NextRequest) {
   let rawText: string;
 
   if (isPdf) {
-    // pdf-parse extracts clean text from the PDF binary structure
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const parsed = await pdfParse(buffer);
@@ -103,7 +104,7 @@ Return ONLY this JSON structure (use empty string "" or empty array [] for missi
       "role": "<job title>",
       "startDate": "<month year or year>",
       "endDate": "<month year or Present>",
-      "bullets": ["<achievement or responsibility>", ...]
+      "bullets": ["<achievement or responsibility>"]
     }
   ],
   "education": [
@@ -114,8 +115,8 @@ Return ONLY this JSON structure (use empty string "" or empty array [] for missi
       "year": "<graduation year>"
     }
   ],
-  "skills": ["<skill>", ...],
-  "certifications": ["<certification name>", ...]
+  "skills": ["<skill>"],
+  "certifications": ["<certification name>"]
 }`;
 
   try {

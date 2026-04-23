@@ -1,15 +1,3 @@
-/**
- * lib/ai.ts — Unified AI client for EduPath
- *
- * Priority order: Groq (primary, fastest) → OpenRouter (fallback, also free)
- *
- * Setup:
- *   Option A (Groq):       add GROQ_API_KEY=gsk_... to .env.local
- *   Option B (OpenRouter): add OPENROUTER_API_KEY=sk-or-v1-... to .env.local
- *
- * Both are 100% free, no credit card required.
- */
-
 import OpenAI from "openai";
 
 function buildClient(): { client: OpenAI; model: string; provider: string } {
@@ -23,7 +11,6 @@ function buildClient(): { client: OpenAI; model: string; provider: string } {
       provider: "Groq",
     };
   }
-
   if (process.env.OPENROUTER_API_KEY) {
     return {
       client: new OpenAI({
@@ -38,16 +25,11 @@ function buildClient(): { client: OpenAI; model: string; provider: string } {
       provider: "OpenRouter",
     };
   }
-
-  // Neither key found — surface a clear error at runtime
   throw new Error(
-    "No AI key found. Add GROQ_API_KEY (https://console.groq.com) " +
-      "or OPENROUTER_API_KEY (https://openrouter.ai) to .env.local"
+    "No AI key found. Add GROQ_API_KEY or OPENROUTER_API_KEY to .env.local"
   );
 }
 
-// Lazy-initialise so Next.js module loading never throws on missing key —
-// only actual AI calls will throw.
 let _ai: ReturnType<typeof buildClient> | null = null;
 
 export function getAI() {
@@ -55,7 +37,29 @@ export function getAI() {
   return _ai;
 }
 
-/** Convenience re-export: true if any AI key is present */
 export function isAIConfigured(): boolean {
   return !!(process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY);
+}
+
+// Model presets
+export const MODELS = {
+  resume: "llama-3.3-70b-versatile",
+  default: "llama-3.3-70b-versatile",
+};
+
+// Helper: call AI and return parsed JSON
+export async function groqJSON<T>(
+  prompt: string,
+  model: string,
+  maxTokens = 2048
+): Promise<T> {
+  const { client } = getAI();
+  const completion = await client.chat.completions.create({
+    model,
+    max_tokens: maxTokens,
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+  });
+  const text = completion.choices[0]?.message?.content ?? "{}";
+  return JSON.parse(text) as T;
 }
