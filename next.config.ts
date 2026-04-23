@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   serverExternalPackages: ["@prisma/client", "bcryptjs"],
   images: {
     remotePatterns: [
@@ -13,7 +14,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.googleusercontent.com" },
     ],
   },
-  // Enhanced webpack configuration for better stability
   webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -23,24 +23,18 @@ const nextConfig: NextConfig = {
         tls: false,
       };
     }
-    
-    // Optimize for development
     if (dev) {
       config.watchOptions = {
         poll: 1000,
         aggregateTimeout: 300,
       };
     }
-    
     return config;
   },
-  // Experimental features
   experimental: {},
-  // Development optimizations
   devIndicators: {
     position: 'bottom-right',
   },
-  // Logging configuration
   logging: {
     fetches: {
       fullUrl: false,
