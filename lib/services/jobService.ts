@@ -2,7 +2,6 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 
-// ─── JSearch API types ────────────────────────────────────────────────────────
 interface JSearchJob {
   job_id: string;
   job_title: string;
@@ -13,7 +12,7 @@ interface JSearchJob {
   job_employment_type: string | null;
   job_description: string | null;
   job_required_skills: string[] | null;
-  job_highlights?: { Qualifications?: string[] };
+  job_highlights?: { Qualifications?: string[]; Benefits?: string[] };
   job_min_salary: number | null;
   job_max_salary: number | null;
   job_salary_currency: string | null;
@@ -27,7 +26,15 @@ interface JSearchResponse {
   status: string;
 }
 
-// ─── Normalize JSearch → EduPath Job shape ───────────────────────────────────
+// Clean up messy job titles from JSearch
+function cleanTitle(title: string): string {
+  return title
+    .replace(/\|.*$/, "")           // remove "| Job # 6869" suffixes
+    .replace(/\(.*?ref.*?\)/gi, "") // remove ref codes in parens
+    .replace(/\s{2,}/g, " ")        // collapse multiple spaces
+    .trim();
+}
+
 function normalizeJob(j: JSearchJob) {
   const location = [j.job_city, j.job_state, j.job_country]
     .filter(Boolean)
@@ -41,15 +48,23 @@ function normalizeJob(j: JSearchJob) {
     salaryRange = `${currency}${fmt(j.job_min_salary)} – ${currency}${fmt(j.job_max_salary)}`;
   }
 
-  // Collect skills from required_skills + qualifications highlights
-  const skills: string[] = [
-    ...(j.job_required_skills ?? []),
-    ...(j.job_highlights?.Qualifications ?? []),
-  ]
-    .flatMap((s) => s.split(/[,;]/))
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && s.length < 30)
-    .slice(0, 8);
+  // Better skills extraction — try required_skills first, then parse qualifications
+  let skills: string[] = [];
+
+  if (j.job_required_skills && j.job_required_skills.length > 0) {
+    skills = j.job_required_skills
+      .flatMap((s) => s.split(/[,;]/))
+      .map((s) => s.trim())
+      .filter((s) => s.length > 1 && s.length < 25);
+  } else if (j.job_highlights?.Qualifications) {
+    // Extract short tech keywords from qualification sentences
+    const techPattern = /\b(React|Node|Python|Java|TypeScript|JavaScript|AWS|Docker|Kubernetes|SQL|PostgreSQL|MongoDB|Redis|GraphQL|REST|API|Git|CI\/CD|Agile|Scrum|Angular|Vue|Next\.?js|Express|Spring|Django|Flask|Ruby|Go|Rust|C\+\+|C#|\.NET|Azure|GCP|Linux|Terraform|Figma|CSS|HTML)\b/gi;
+    const allText = j.job_highlights.Qualifications.join(" ");
+    const matches = allText.match(techPattern) ?? [];
+    skills = [...new Set(matches.map((s) => s.trim()))];
+  }
+
+  skills = skills.slice(0, 7);
 
   const typeMap: Record<string, string> = {
     FULLTIME: "FULL_TIME",
@@ -66,20 +81,19 @@ function normalizeJob(j: JSearchJob) {
 
   return {
     id: j.job_id,
-    title: j.job_title,
+    title: cleanTitle(j.job_title),
     company: j.employer_name,
     location,
     salaryRange,
     type,
     skills,
-    description: (j.job_description ?? "").slice(0, 300) + "…",
+    description: (j.job_description ?? "").slice(0, 280) + "…",
     remoteFriendly: j.job_is_remote ?? false,
     applyLink: j.job_apply_link ?? null,
     logo: j.employer_logo ?? null,
   };
 }
 
-// ─── Fetch from JSearch ───────────────────────────────────────────────────────
 async function fetchFromJSearch(query: string, page = 1) {
   const key = process.env.RAPIDAPI_KEY;
   if (!key) throw new Error("RAPIDAPI_KEY not set");
@@ -95,7 +109,7 @@ async function fetchFromJSearch(query: string, page = 1) {
       "X-RapidAPI-Key": key,
       "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
     },
-    next: { revalidate: 3600 }, // cache 1 hour
+    next: { revalidate: 3600 },
   });
 
   if (!res.ok) throw new Error(`JSearch API error: ${res.status}`);
@@ -103,7 +117,6 @@ async function fetchFromJSearch(query: string, page = 1) {
   return (json.data ?? []).map(normalizeJob);
 }
 
-// ─── Get user skills from their latest resume ─────────────────────────────────
 async function getUserSkills(userId: string): Promise<string[]> {
   const resume = await prisma.resume.findFirst({
     where: { userId },
@@ -112,45 +125,30 @@ async function getUserSkills(userId: string): Promise<string[]> {
   });
 
   if (!resume?.data) return [];
-
   const data = resume.data as Record<string, unknown>;
   const skills = Array.isArray(data.skills)
     ? (data.skills as string[]).filter(Boolean)
     : [];
-
-  // Also try to extract role from headline
-  return skills.slice(0, 6); // top 6 skills for query
+  return skills.slice(0, 6);
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
-/**
- * Fetch live jobs from JSearch.
- * If userId given → personalized query based on user's resume skills.
- * Otherwise → generic software developer search.
- */
 export async function listJobs(userId?: string) {
   try {
     let query = "software developer jobs";
-
     if (userId) {
       const skills = await getUserSkills(userId);
       if (skills.length > 0) {
-        // Build a natural query: "React Node.js TypeScript developer"
         query = `${skills.slice(0, 4).join(" ")} developer jobs`;
       }
     }
-
     const jobs = await fetchFromJSearch(query);
     return jobs;
   } catch (err) {
     console.error("JSearch fetch failed, returning empty:", err);
-    // Graceful fallback: return empty rather than crash
     return [];
   }
 }
 
-/** Apply to a job — stored in our DB for tracking pipeline */
 export async function applyToJob(input: {
   userId: string;
   jobId: string;
@@ -162,12 +160,7 @@ export async function applyToJob(input: {
   attachmentUrl?: string;
 }) {
   return prisma.application.upsert({
-    where: {
-      userId_jobId: {
-        userId: input.userId,
-        jobId: input.jobId,
-      },
-    },
+    where: { userId_jobId: { userId: input.userId, jobId: input.jobId } },
     update: {
       resumeId: input.resumeId,
       fullName: input.fullName,
@@ -178,21 +171,14 @@ export async function applyToJob(input: {
       status: "APPLIED",
       updatedAt: new Date(),
     },
-    create: {
-      ...input,
-      status: "APPLIED",
-    },
+    create: { ...input, status: "APPLIED" },
   });
 }
 
-/** Get the user's tracked applications from our DB */
 export async function getApplications(userId: string) {
   return prisma.application.findMany({
     where: { userId },
-    include: {
-      job: true,
-      resume: true,
-    },
+    include: { job: true, resume: true },
     orderBy: { updatedAt: "desc" },
   });
 }

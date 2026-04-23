@@ -61,7 +61,7 @@ export const challengeEntrySchema = z.object({
 });
 
 export const applicationSchema = z.object({
-  jobId: z.string().cuid(),
+  jobId: z.string().min(1),
   resumeId: z.string().cuid().optional(),
   fullName: z.string().min(2).max(120),
   email: z.string().email(),
