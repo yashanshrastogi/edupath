@@ -158,11 +158,6 @@ export default function LoginForm({ oauthProviders }: LoginFormProps) {
           </div>
         )}
 
-        <div className="auth-hint">
-          <p>Demo User: <span>demo@edupath.ai</span></p>
-          <p>Admin: <span>admin@edupath.ai</span></p>
-          <p>Password: <span>Password123</span></p>
-        </div>
       </div>
     </div>
   );
